@@ -18,7 +18,7 @@ type Crypto struct {
 }
 
 func (widget *Crypto) Initialize() error {
-	widget.withTitle("Crypto").withCacheDuration(time.Hour)
+	widget.withTitle("Crypto").withCacheDuration(time.Minute * 10)
 
 	if widget.Days == 0 {
 		widget.Days = 1

@@ -1,0 +1,64 @@
+.prometheus-current-value {
+    font-size: clamp(2rem, 6cqi, 3.2rem);
+    line-height: 1.2;
+    margin-bottom: 1rem;
+}
+
+.prometheus-chart-link {
+    display: block;
+}
+
+a.prometheus-chart-link {
+    border-radius: var(--border-radius);
+}
+
+.prometheus-chart {
+    height: clamp(9rem, 18cqi, 18rem);
+    position: relative;
+}
+
+.prometheus-chart svg {
+    height: 100%;
+    width: 100%;
+    overflow: visible;
+}
+
+.prometheus-gridlines {
+    stroke: var(--color-graph-gridlines);
+    stroke-width: 1;
+}
+
+.prometheus-line {
+    stroke: var(--color-primary);
+    stroke-width: 2px;
+}
+
+a.prometheus-chart-link:hover .prometheus-line,
+a.prometheus-chart-link:focus-visible .prometheus-line {
+    stroke: var(--color-text-highlight);
+}
+
+.prometheus-scale {
+    position: absolute;
+    inset: 0.2rem 0.4rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+    color: var(--color-text-subdue);
+    font-size: var(--font-size-h6);
+    pointer-events: none;
+}
+
+.prometheus-scale span {
+    padding-left: 0.5rem;
+    background: var(--color-widget-background);
+}
+
+.prometheus-time-labels {
+    display: flex;
+    justify-content: space-between;
+    color: var(--color-text-subdue);
+    font-size: var(--font-size-h6);
+    margin-top: 0.4rem;
+}

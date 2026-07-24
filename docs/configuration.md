@@ -40,6 +40,7 @@
   - [ChangeDetection.io](#changedetectionio)
   - [Clock](#clock)
   - [Markets](#markets)
+  - [Prometheus](#prometheus)
   - [Twitch Channels](#twitch-channels)
   - [Twitch Top Games](#twitch-top-games)
   - [iframe](#iframe)
@@ -2846,6 +2847,121 @@ The link to go to when clicking on the symbol.
 `chart-link`
 
 The link to go to when clicking on the chart.
+
+### Prometheus
+Display a responsive line graph for a PromQL range query. The widget uses the first
+time series returned by Prometheus, so queries that may return multiple series should
+usually be aggregated or filtered to select the desired one.
+
+The graph fills the width of its containing column. To display it across the combined
+width of all columns, add it to the page's [`head-widgets`](#head-widgets):
+
+```yaml
+pages:
+  - name: Home
+    head-widgets:
+      - type: prometheus
+        title: Request Rate
+        server: https://prometheus.example.com
+        query: sum(rate(http_requests_total[5m]))
+        link: https://grafana.example.com/d/example
+        range: 24h
+        unit: compact-number
+
+    columns:
+      - size: full
+        widgets:
+          - type: hacker-news
+```
+
+The same widget can be placed in a regular column:
+
+```yaml
+- type: prometheus
+  title: Memory Usage
+  server: http://prometheus:9090
+  query: process_resident_memory_bytes{job="my-service"}
+  range: 6h
+  step: 2m
+  unit: bytes
+  show-value: true
+  show-scale: true
+  show-time-labels: true
+```
+
+#### Properties
+
+| Name | Type | Required | Default |
+| ---- | ---- | -------- | ------- |
+| server | string | yes | |
+| query | string | yes | |
+| link | string | no | |
+| range | duration | no | 24h |
+| step | duration | no | automatic |
+| headers | key (string) & value (string) | no | |
+| allow-insecure | boolean | no | false |
+| unit | string | no | number |
+| show-value | boolean | no | true |
+| show-scale | boolean | no | false |
+| show-time-labels | boolean | no | false |
+
+##### `server`
+The base URL of the Prometheus server. Glance appends `/api/v1/query_range` to
+this value. Path prefixes are supported, so a value such as
+`https://example.com/prometheus` queries
+`https://example.com/prometheus/api/v1/query_range`.
+
+The URL must use HTTP or HTTPS and must not contain a query string or fragment.
+
+##### `query`
+The PromQL expression to evaluate. The graph displays the first time series in the
+returned matrix and ignores any additional series. Use an aggregation such as `sum`
+or add label matchers when response order should not determine the displayed series.
+
+##### `link`
+An optional URL to open in a new tab when the graph is clicked. This can point to a
+Grafana dashboard, Prometheus expression view, or any other relevant page.
+
+##### `range`
+How far back the graph queries. Durations support the same `s`, `m`, `h`, and `d`
+suffixes as other Glance duration fields.
+
+##### `step`
+The Prometheus query resolution. When omitted, Glance calculates a step that targets
+approximately 120 samples across the configured range, with a minimum step of one
+second.
+
+##### `headers`
+Optional headers sent with the Prometheus request. This can be used for bearer tokens
+or authentication handled by a reverse proxy:
+
+```yaml
+headers:
+  Authorization: Bearer ${PROMETHEUS_TOKEN}
+```
+
+##### `allow-insecure`
+Whether to accept invalid or self-signed TLS certificates from the Prometheus server.
+
+##### `unit`
+Controls formatting for the latest value and scale labels. Available values are:
+
+- `number` displays the numeric value without conversion.
+- `compact-number` uses `k`, `M`, `B`, and `T` suffixes.
+- `bytes` uses IEC units such as KiB, MiB, and GiB.
+- `duration` treats the Prometheus value as seconds and selects an appropriate
+  millisecond, second, minute, hour, or day unit.
+- `percent` appends `%` without scaling the value. Multiply ratios by 100 in PromQL
+  when a 0–100 percentage is desired.
+
+##### `show-value`
+Whether to show the latest finite sample above the graph.
+
+##### `show-scale`
+Whether to show the minimum and maximum values on the graph.
+
+##### `show-time-labels`
+Whether to show the configured range and `now` below the graph.
 
 ### Twitch Channels
 Display a list of channels from Twitch.

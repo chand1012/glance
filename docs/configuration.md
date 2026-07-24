@@ -2851,7 +2851,8 @@ The link to go to when clicking on the chart.
 ### Prometheus
 Display a responsive line graph for a PromQL range query. The widget uses the first
 time series returned by Prometheus, so queries that may return multiple series should
-usually be aggregated or filtered to select the desired one.
+usually be aggregated or filtered to select the desired one. Hover over the graph's
+points to see each sample's time and formatted value.
 
 The graph fills the width of its containing column. To display it across the combined
 width of all columns, add it to the page's [`head-widgets`](#head-widgets):

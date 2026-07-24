@@ -174,8 +174,14 @@ func TestFetchPrometheusGraph(t *testing.T) {
 	if graph.StartTimeLabel != "1d ago" || graph.EndTimeLabel != "now" {
 		t.Fatalf("unexpected time labels: %q, %q", graph.StartTimeLabel, graph.EndTimeLabel)
 	}
-	if !strings.Contains(graph.Points, "0.00,174.00") || !strings.Contains(graph.Points, "1000.00,6.00") {
-		t.Fatalf("unexpected graph points: %s", graph.Points)
+	if !strings.Contains(graph.Polyline, "0.00,174.00") || !strings.Contains(graph.Polyline, "1000.00,6.00") {
+		t.Fatalf("unexpected graph polyline: %s", graph.Polyline)
+	}
+	if len(graph.Points) != 2 {
+		t.Fatalf("unexpected number of interactive points: %d", len(graph.Points))
+	}
+	if graph.Points[0].FormattedValue != "1" || graph.Points[1].FormattedValue != "2" {
+		t.Fatalf("unexpected interactive point values: %+v", graph.Points)
 	}
 	if strings.Join(annotations, "|") != "partial data|query hint" {
 		t.Fatalf("unexpected annotations: %v", annotations)
@@ -286,13 +292,22 @@ func TestFetchPrometheusGraphHonorsContext(t *testing.T) {
 }
 
 func TestPrometheusGraphPointsFlatSeries(t *testing.T) {
-	points := prometheusGraphPoints([]prometheusSample{
+	polyline, points := prometheusGraphCoordinates([]prometheusSample{
 		{Timestamp: 0, Value: 5},
 		{Timestamp: 10, Value: 5},
-	}, 0, 10, 5, 5)
+	}, 0, 10, 5, 5, "number")
 
-	if points != "0.00,90.00 1000.00,90.00" {
-		t.Fatalf("unexpected flat graph points: %s", points)
+	if polyline != "0.00,90.00 1000.00,90.00" {
+		t.Fatalf("unexpected flat graph polyline: %s", polyline)
+	}
+	if len(points) != 2 || points[0].YPercent != 50 || points[1].YPercent != 50 {
+		t.Fatalf("unexpected interactive points: %+v", points)
+	}
+	if points[0].HitLeft != 0 || points[0].HitWidth != 50 || points[0].HitPointOffset != 0 {
+		t.Fatalf("unexpected first point hit area: %+v", points[0])
+	}
+	if points[1].HitLeft != 50 || points[1].HitWidth != 50 || points[1].HitPointOffset != 100 {
+		t.Fatalf("unexpected last point hit area: %+v", points[1])
 	}
 }
 
@@ -336,7 +351,31 @@ func TestPrometheusWidgetRender(t *testing.T) {
 		ShowScale:      true,
 		ShowTimeLabels: true,
 		Graph: &prometheusGraph{
-			Points:         "0.00,90.00 1000.00,90.00",
+			Polyline: "0.00,90.00 1000.00,90.00",
+			Points: []prometheusGraphPoint{
+				{
+					X:              0,
+					Y:              90,
+					YPercent:       50,
+					HitLeft:        0,
+					HitWidth:       50,
+					HitPointOffset: 0,
+					FormattedValue: "1.00k",
+					FormattedTime:  "12:00",
+					TooltipLeft:    true,
+				},
+				{
+					X:              1000,
+					Y:              90,
+					YPercent:       50,
+					HitLeft:        50,
+					HitWidth:       50,
+					HitPointOffset: 100,
+					FormattedValue: "2.00k",
+					FormattedTime:  "13:00",
+					TooltipRight:   true,
+				},
+			},
 			LatestValue:    "2.00k",
 			MinimumValue:   "1.00k",
 			MaximumValue:   "2.00k",
@@ -352,12 +391,19 @@ func TestPrometheusWidgetRender(t *testing.T) {
 		`rel="noreferrer"`,
 		`aria-label="Open Request Rate graph"`,
 		`2.00k`,
+		`1.00k`,
+		`12:00`,
 		`1d ago`,
 		`prometheus-scale`,
+		`prometheus-point-marker`,
+		`prometheus-hover-point`,
 	} {
 		if !strings.Contains(rendered, expected) {
 			t.Fatalf("rendered widget does not contain %q:\n%s", expected, rendered)
 		}
+	}
+	if strings.Contains(rendered, "ZgotmplZ") {
+		t.Fatalf("rendered widget contains unsafe template output:\n%s", rendered)
 	}
 
 	widget.Link = ""

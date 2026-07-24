@@ -10,6 +10,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -46,12 +47,27 @@ type prometheusWidget struct {
 }
 
 type prometheusGraph struct {
-	Points         string
+	Polyline       string
+	Points         []prometheusGraphPoint
 	LatestValue    string
 	MinimumValue   string
 	MaximumValue   string
 	StartTimeLabel string
 	EndTimeLabel   string
+}
+
+type prometheusGraphPoint struct {
+	X              float64
+	Y              float64
+	YPercent       float64
+	HitLeft        float64
+	HitWidth       float64
+	HitPointOffset float64
+	FormattedValue string
+	FormattedTime  string
+	TooltipBelow   bool
+	TooltipLeft    bool
+	TooltipRight   bool
 }
 
 type prometheusSample struct {
@@ -230,14 +246,27 @@ func fetchPrometheusGraph(ctx context.Context, widget *prometheusWidget, now tim
 		return nil, nil, errors.New("Prometheus query returned fewer than two finite samples")
 	}
 
+	sort.Slice(samples, func(i, j int) bool {
+		return samples[i].Timestamp < samples[j].Timestamp
+	})
+
 	minimum, maximum := samples[0].Value, samples[0].Value
 	for _, sample := range samples[1:] {
 		minimum = min(minimum, sample.Value)
 		maximum = max(maximum, sample.Value)
 	}
 
+	polyline, points := prometheusGraphCoordinates(
+		samples,
+		float64(start.UnixNano())/1e9,
+		float64(now.UnixNano())/1e9,
+		minimum,
+		maximum,
+		widget.Unit,
+	)
 	graph := &prometheusGraph{
-		Points:         prometheusGraphPoints(samples, float64(start.UnixNano())/1e9, float64(now.UnixNano())/1e9, minimum, maximum),
+		Polyline:       polyline,
+		Points:         points,
 		LatestValue:    formatPrometheusValue(samples[len(samples)-1].Value, widget.Unit),
 		MinimumValue:   formatPrometheusValue(minimum, widget.Unit),
 		MaximumValue:   formatPrometheusValue(maximum, widget.Unit),
@@ -263,8 +292,13 @@ func formatPrometheusStep(value time.Duration) string {
 	return strconv.FormatFloat(value.Seconds(), 'f', 3, 64)
 }
 
-func prometheusGraphPoints(samples []prometheusSample, start, end, minimum, maximum float64) string {
-	points := make([]string, 0, len(samples))
+func prometheusGraphCoordinates(
+	samples []prometheusSample,
+	start, end, minimum, maximum float64,
+	unit string,
+) (string, []prometheusGraphPoint) {
+	polylinePoints := make([]string, 0, len(samples))
+	graphPoints := make([]prometheusGraphPoint, 0, len(samples))
 	timeSpan := end - start
 	valueSpan := maximum - minimum
 	const verticalPadding = 6.0
@@ -279,10 +313,39 @@ func prometheusGraphPoints(samples []prometheusSample, start, end, minimum, maxi
 			y = (maximum-sample.Value)/valueSpan*usableHeight + verticalPadding
 		}
 
-		points = append(points, fmt.Sprintf("%.2f,%.2f", x, y))
+		polylinePoints = append(polylinePoints, fmt.Sprintf("%.2f,%.2f", x, y))
+		graphPoints = append(graphPoints, prometheusGraphPoint{
+			X:              x,
+			Y:              y,
+			YPercent:       y / prometheusGraphHeight * 100,
+			FormattedValue: formatPrometheusValue(sample.Value, unit),
+			FormattedTime:  time.Unix(int64(sample.Timestamp), int64(math.Mod(sample.Timestamp, 1)*1e9)).Format("15:04"),
+			TooltipBelow:   y < prometheusGraphHeight*0.25,
+			TooltipLeft:    x < prometheusGraphWidth*0.1,
+			TooltipRight:   x > prometheusGraphWidth*0.9,
+		})
 	}
 
-	return strings.Join(points, " ")
+	for i := range graphPoints {
+		xPercent := graphPoints[i].X / prometheusGraphWidth * 100
+		left := 0.0
+		right := 100.0
+
+		if i > 0 {
+			previousXPercent := graphPoints[i-1].X / prometheusGraphWidth * 100
+			left = (previousXPercent + xPercent) / 2
+		}
+		if i < len(graphPoints)-1 {
+			nextXPercent := graphPoints[i+1].X / prometheusGraphWidth * 100
+			right = (xPercent + nextXPercent) / 2
+		}
+
+		graphPoints[i].HitLeft = left
+		graphPoints[i].HitWidth = max(right-left, 0.01)
+		graphPoints[i].HitPointOffset = (xPercent - left) / graphPoints[i].HitWidth * 100
+	}
+
+	return strings.Join(polylinePoints, " "), graphPoints
 }
 
 func formatPrometheusValue(value float64, unit string) string {

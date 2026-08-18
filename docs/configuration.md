@@ -854,6 +854,19 @@ Optionally specify the headers that will be sent with the request. Example:
         User-Agent: Custom User Agent
 ```
 
+#### Aggregate feed endpoints
+
+The articles displayed by all RSS widgets on a page are also available as a single feed. The aggregate uses each widget's configured `limit`, including the default limit of 25, so it contains the same number of items as the page. Articles from multiple RSS widgets are combined and ordered from newest to oldest.
+
+RSS 2.0 and JSON Feed 1.1 are available through the file extension:
+
+```text
+/api/pages/<page-slug>/feed.xml
+/api/pages/<page-slug>/feed.json
+```
+
+The default page also has shorter aliases at `/api/feed.xml` and `/api/feed.json`. Feed endpoints follow the same authentication rules as the page.
+
 ### Videos
 Display a list of the latest videos from specific YouTube channels.
 

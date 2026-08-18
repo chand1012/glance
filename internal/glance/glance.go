@@ -449,6 +449,10 @@ func (a *application) server() (func() error, func() error) {
 	mux.HandleFunc("GET /{page}", a.handlePageRequest)
 
 	mux.HandleFunc("GET /api/pages/{page}/content/{$}", a.handlePageContentRequest)
+	mux.HandleFunc("GET /api/feed.xml", a.handleAggregateFeedRequest)
+	mux.HandleFunc("GET /api/feed.json", a.handleAggregateFeedRequest)
+	mux.HandleFunc("GET /api/pages/{page}/feed.xml", a.handleAggregateFeedRequest)
+	mux.HandleFunc("GET /api/pages/{page}/feed.json", a.handleAggregateFeedRequest)
 
 	if !a.Config.Theme.DisablePicker {
 		mux.HandleFunc("POST /api/set-theme/{key}", a.handleThemeChangeRequest)

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM --platform=$BUILDPLATFORM golang:1.27.1-alpine3.25 AS build
+FROM --platform=$BUILDPLATFORM golang:1.27.1-alpine3.24 AS build
 
 WORKDIR /src
 
@@ -18,7 +18,7 @@ RUN CGO_ENABLED=0 \
     GOARM="${TARGETVARIANT#v}" \
     go build -trimpath -ldflags="-s -w" -o /out/glance .
 
-FROM alpine:3.25
+FROM alpine:3.24
 
 WORKDIR /app
 COPY --from=build /out/glance ./glance
